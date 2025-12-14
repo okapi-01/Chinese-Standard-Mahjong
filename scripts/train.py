@@ -26,13 +26,13 @@ if __name__ == '__main__':
         'value_coeff': 1,
         'entropy_coeff': 0.02,
         'device': 'cuda',
-        'ckpt_save_interval': 300,  # iter
+        'ckpt_save_interval': 5000,  # iter
         'ckpt_save_path': './models/',
-        'pretrain_ckpt_path': 'ckpt/20250618-161412/20.pkl',
+        'pretrain_ckpt_path': 'ckpt/20251213-160350/100.pkl',
         #evaluate
         'eval_episodes': 40,
-        'eval_interval': 300,  # iter
-        'baseline_ckpt': 'ckpt/20250618-161412/20.pkl',
+        'eval_interval': 5000,  # iter
+        'baseline_ckpt': 'ckpt/20251213-160350/100.pkl',
     }
     
     timestamp = time.strftime("%Y%m%d-%H%M%S")

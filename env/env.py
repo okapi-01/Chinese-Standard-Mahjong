@@ -26,6 +26,7 @@ class MahjongGBEnv():
         self.normalizeReward = config.get('reward_norm', False)
         self.observation_space = self.agentclz.observation_space
         self.action_space = self.agentclz.action_space
+        self.prev_ting = [False] * 4
     
     def reset(self, prevalentWind = -1, tileWall = ''):
         # Create agents to process features
@@ -142,6 +143,17 @@ class MahjongGBEnv():
             self.reward = [10] * 4
             self.reward[player] = -30
             self.done = True
+
+        TING_REWARD = 4
+        if not self.done:
+            testPlayer = (self.curPlayer + 3) % 4
+            cur_ting = self._is_ting(testPlayer)
+            if cur_ting and not self.prev_ting[testPlayer]:
+                if self.reward is None:
+                    self.reward = [0, 0, 0, 0]
+                self.reward[testPlayer] += TING_REWARD
+                self.prev_ting[testPlayer] = cur_ting
+
         return self._obs(), self._reward(), self._done()
         
     def _obs(self):
@@ -314,3 +326,34 @@ class MahjongGBEnv():
             self.done = True
         except Exception as e:
             raise Error(player)
+        
+    def _is_ting(self, player):
+        hand = self.hands[player]
+        pack = self.packs[player]
+
+        # 枚举所有可能的牌
+        for tile in [
+            *['W'+str(i) for i in range(1,10)],
+            *['B'+str(i) for i in range(1,10)],
+            *['T'+str(i) for i in range(1,10)],
+            *['F'+str(i) for i in range(1,5)],
+            *['J'+str(i) for i in range(1,4)],
+        ]:
+            try:
+                MahjongFanCalculator(
+                    pack=tuple(pack),
+                    hand=tuple(hand),
+                    winTile=tile,
+                    flowerCount=0,
+                    isSelfDrawn=True,
+                    is4thTile=False,
+                    isAboutKong=False,
+                    isWallLast=False,
+                    seatWind=player,
+                    prevalentWind=self.prevalentWind,
+                    verbose=False
+                )
+                return True
+            except:
+                pass
+        return False

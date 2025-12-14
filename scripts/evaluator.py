@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from model import CNNModel
-from env.env import MahjongGBEnv
+from env.env_ori import MahjongGBEnv
 from env.feature import FeatureAgent
 class Evaluator:
     def __init__(self, config, model_ckpt=None, baseline_ckpt=None):
