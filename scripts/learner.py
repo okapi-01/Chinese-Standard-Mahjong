@@ -35,15 +35,9 @@ class Learner(Process):
         device = torch.device(self.config['device'])
         model = CNNModel()
         if self.config['pretrain_ckpt_path']:
-            model_files = [f for f in os.listdir(self.config['pretrain_ckpt_path']) if f.endswith('.pt')]
-            if model_files:
-                max_epoch = max([int(f.split('.')[0]) for f in model_files if f.split('.')[0].isdigit()])
-                model_path = os.path.join(self.config['pretrain_ckpt_path'], f"{max_epoch}.pt")
-                model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
-                iterations = max_epoch + 1
-                print(f"Loaded pre-trained model from {model_path}")
-            else:
-                raise FileNotFoundError("No pre-trained model found in the specified path.")
+            f = self.config['pretrain_ckpt_path']
+            model.load_state_dict(torch.load(f, map_location=torch.device('cpu')))
+            print(f"Loaded pre-trained model from {f}")
         # send to model pool
         model_pool.push(model.state_dict()) # push cpu-only tensor to model_pool
         model = model.to(device)
