@@ -16,7 +16,10 @@ class ModelPoolServer:
         n = self.n % self.capacity
         if self.model_list[n]:
             # FIFO: release shared memory of older model
-            self.model_list[n]['memory'].unlink()
+            try:
+                self.model_list[n]['memory'].unlink()
+            except FileNotFoundError:
+                pass
         
         data = cPickle.dumps(state_dict) # model parameters serialized to bytes
         memory = SharedMemory(create = True, size = len(data))

@@ -39,7 +39,7 @@ class ReplayBuffer:
             self.stats['sample_in'] += len(unpacked_data)
             self.stats['episode_in'] += 1
     
-    def sample(self, batch_size, win_ratio=0.8):
+    def sample(self, batch_size, win_ratio=0.5):
         self._flush()
         assert len(self.buffer) > 0, "Empty buffer!"
         self.stats['sample_out'] += batch_size

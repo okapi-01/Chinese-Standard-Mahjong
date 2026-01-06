@@ -3,7 +3,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from pre_dataset import MahjongGBDataset, MahjongGBDataset_Allload
 from torch.utils.data import DataLoader
-from scripts.model import CNNModel
+from scripts.model import CNNModel, TransformerModel, TransformerMultiHeadModel
 import torch.nn.functional as F
 import torch
 import argparse
@@ -27,17 +27,18 @@ if __name__ == '__main__':
     validateDataset = MahjongGBDataset_Allload(args.splitratio, 1, False, args)
     loader = DataLoader(dataset = trainDataset, batch_size = args.batch_size, shuffle = True)
     vloader = DataLoader(dataset = validateDataset, batch_size = args.batch_size, shuffle = False)
-    model = CNNModel().to('cuda')
+    #model = CNNModel().to('cuda')
+    model = TransformerMultiHeadModel(dropout=0.1).to('cuda')
     optimizer = torch.optim.Adam(model.parameters(), lr = 5e-4)
 
     if args.timestamp is not None:
         timestamp = args.timestamp
         args.logdir = os.path.join(args.logdir, timestamp)
         # Find the highest epoch model file in the logdir and load it
-        model_files = [f for f in os.listdir(args.logdir) if f.endswith('.pkl')]
+        model_files = [f for f in os.listdir(args.logdir) if f.endswith('.pt')]
         if model_files:
             max_epoch = max([int(f.split('.')[0]) for f in model_files if f.split('.')[0].isdigit()])
-            model_path = os.path.join(args.logdir, f"{max_epoch}.pkl")
+            model_path = os.path.join(args.logdir, f"{max_epoch}.pt")
             model.load_state_dict(torch.load(model_path, map_location=torch.device('cuda')))
             print(f"Loaded model from {model_path}")
         else:
@@ -92,5 +93,5 @@ if __name__ == '__main__':
         if (e + 1) % args.save_interval == 0:
             logdir = args.logdir
             os.makedirs(logdir, exist_ok=True)
-            torch.save(model.state_dict(), os.path.join(logdir, f'{e+1}.pkl'))
-            print('Saving model to', os.path.join(logdir, f'{e+1}.pkl'))
+            torch.save(model.state_dict(), os.path.join(logdir, f'{e+1}.pt'))
+            print('Saving model to', os.path.join(logdir, f'{e+1}.pt'))

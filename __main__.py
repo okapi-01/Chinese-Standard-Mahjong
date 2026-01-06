@@ -3,6 +3,7 @@ from env.feature import FeatureAgent
 
 # Model part
 from scripts.model import CNNModel
+from scripts.model import TransformerMultiHeadModel
 
 # Botzone interaction
 import numpy as np
@@ -17,8 +18,9 @@ def obs2response(model, obs):
 import sys
 
 if __name__ == '__main__':
-    model = CNNModel()
-    data_dir = '/data/1.0.pkl'
+    model = TransformerMultiHeadModel()
+    #data_dir = '/data/1.0.pkl'
+    data_dir = './ckpt/0.pt'
     model.load_state_dict(torch.load(data_dir, map_location = torch.device('cpu')))
     model.train(False)
     input() # 1

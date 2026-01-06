@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from model import CNNModel
+from model import CNNModel, TransformerModel, TransformerMultiHeadModel
 from env.env import MahjongGBEnv
 from env.feature import FeatureAgent
 class Evaluator:
@@ -13,8 +13,10 @@ class Evaluator:
 
         self.config = config
         # 加载当前模型
-        self.model = CNNModel().to(self.device)
-        self.baseline_model = CNNModel().to(self.device)
+        # self.model = CNNModel().to(self.device)
+        # self.baseline_model = CNNModel().to(self.device)
+        self.model = TransformerMultiHeadModel().to(self.device)
+        self.baseline_model = TransformerMultiHeadModel().to(self.device)
 
         self.update_model(model_ckpt, baseline_ckpt)
 

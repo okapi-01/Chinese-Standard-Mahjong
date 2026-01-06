@@ -9,7 +9,7 @@ from scripts.replay_buffer import ReplayBuffer
 from scripts.model_pool import ModelPoolClient
 from env.env import MahjongGBEnv
 from env.feature import FeatureAgent
-from model import CNNModel
+from model import CNNModel, TransformerModel, TransformerMultiHeadModel
 
 class Actor(Process):
 
@@ -21,24 +21,30 @@ class Actor(Process):
         
     def run(self):
         torch.set_num_threads(1)
+        device = torch.device('cpu')
     
-        self.pretrained_model = CNNModel() # pretrained model
+        #self.pretrained_model = CNNModel() # pretrained model
+        self.pretrained_model = TransformerMultiHeadModel() # pretrained model
         if self.config['baseline_ckpt']:
-                self.pretrained_model.load_state_dict(torch.load(self.config['baseline_ckpt'], map_location=torch.device('cpu')))
+                self.pretrained_model.load_state_dict(torch.load(self.config['baseline_ckpt'], map_location=device))
         else:
                 raise FileNotFoundError("No pre-trained model found in the specified path.")
-    
+        self.pretrained_model.to(device) 
+        self.pretrained_model.eval() # 确保是 eval 模式
+
         # connect to model pool
         model_pool = ModelPoolClient(self.config['model_pool_name'])
         
         # print("actor running")
         # create network model
-        model = CNNModel()
+        #model = CNNModel()
+        model = TransformerMultiHeadModel()
         
         # load initial model
         version = model_pool.get_latest_model()
         state_dict = model_pool.load_model(version)
         model.load_state_dict(state_dict)
+        model.to(device)
         
         # collect data
         env = MahjongGBEnv(config = {'agent_clz': FeatureAgent})
@@ -77,7 +83,8 @@ class Actor(Process):
                 },
                 'action' : [],
                 'reward' : [],
-                'value' : []
+                'value' : [],
+                'log_prob' : [],
             }
             done = False
             ppp = 1
@@ -94,16 +101,22 @@ class Actor(Process):
                     if agent_name == train_agent_name:
                         episode_data['state']['observation'].append(state['observation'])
                         episode_data['state']['action_mask'].append(state['action_mask'])
-                    state['observation'] = torch.tensor(state['observation'], dtype = torch.float).unsqueeze(0)
-                    state['action_mask'] = torch.tensor(state['action_mask'], dtype = torch.float).unsqueeze(0)
+                    state['observation'] = torch.tensor(state['observation'], dtype = torch.float).unsqueeze(0).to(device)
+                    state['action_mask'] = torch.tensor(state['action_mask'], dtype = torch.float).unsqueeze(0).to(device)
                     # model.train(False) # Batch Norm inference mode
                     with torch.no_grad():
                         current_model = policies[agent_name]
                         current_model.eval()
                         logits, value = current_model(state)
+                        logits = logits.cpu()
+                        value = value.cpu()
                         if agent_name == train_agent_name:
                             action_dist = torch.distributions.Categorical(logits = logits)
                             action = action_dist.sample().item()
+                            
+                            log_prob = action_dist.log_prob(torch.tensor(action)).item()
+                            episode_data['log_prob'].append(log_prob)
+                            
                             value = value.item()
                             episode_data['action'].append(action)
                             episode_data['value'].append(value)
@@ -132,6 +145,8 @@ class Actor(Process):
             
             # postprocessing episode data
             #print(episode_data['reward'])
+            if len(episode_data['state']['observation']) == 0:
+                continue
             if len(episode_data['action']) < len(episode_data['reward']):
                 episode_data['reward'].pop(0)
             obs = np.stack(episode_data['state']['observation'])
@@ -139,6 +154,7 @@ class Actor(Process):
             actions = np.array(episode_data['action'], dtype = np.int64)
             rewards = np.array(episode_data['reward'], dtype = np.float32)
             values = np.array(episode_data['value'], dtype = np.float32)
+            log_probs = np.array(episode_data['log_prob'], dtype = np.float32)
             next_values = np.array(episode_data['value'][1:] + [0], dtype = np.float32)
             
             # print(actions.shape, rewards.shape, values.shape, next_values.shape)
@@ -151,6 +167,7 @@ class Actor(Process):
                 advs.append(adv) # GAE
             advs.reverse()
             advantages = np.array(advs, dtype = np.float32)
+            lambda_returns = values + advantages
             if rewards[-1] > 0:
                 self.replay_buffer.push_win({
                     'state': {
@@ -159,7 +176,9 @@ class Actor(Process):
                     },
                     'action': actions,
                     'adv': advantages,
-                    'target': td_target,
+                    'target': lambda_returns, #'target': td_target,
+                    'reward': rewards,
+                    'log_prob': log_probs,
                 })
             else:
                 self.replay_buffer.push_lose({
@@ -169,5 +188,7 @@ class Actor(Process):
                     },
                     'action': actions,
                     'adv': advantages,
-                    'target': td_target,
+                    'target': lambda_returns, #'target': td_target,
+                    'reward': rewards,
+                    'log_prob': log_probs,
                 })
