@@ -10,11 +10,11 @@ import time
 from torch.utils.tensorboard import SummaryWriter
 if __name__ == '__main__':
     config = {
-        'replay_buffer_size': 50000,
+        'replay_buffer_size': 100000,
         'replay_buffer_episode': 400,
         'model_pool_size': 20,
         'model_pool_name': 'model-pool',
-        'num_actors': 16,
+        'num_actors': 32,
         'episodes_per_actor': 100000,
         'gamma': 0.99,
         'lambda': 0.95,
@@ -26,13 +26,14 @@ if __name__ == '__main__':
         'value_coeff': 1,
         'entropy_coeff': 0.02,
         'device': 'cuda',
-        'ckpt_save_interval': 5000,  # iter
+        'ckpt_save_interval': 3000,  # iter
         'ckpt_save_path': './models/',
-        'pretrain_ckpt_path': 'ckpt/20251213-160350/100.pkl',
+        'pretrain_ckpt_path': 'ckpt/20251230-175913/100.pkl',
         #evaluate
-        'eval_episodes': 40,
-        'eval_interval': 5000,  # iter
+        'eval_episodes': 500,
+        'eval_interval': 3000,  # iter
         'baseline_ckpt': 'ckpt/20251213-160350/100.pkl',
+        'model': 'CNN2',
     }
     
     timestamp = time.strftime("%Y%m%d-%H%M%S")

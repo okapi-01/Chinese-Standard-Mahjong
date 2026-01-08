@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from model import CNNModel
+from model import *
 from env.env_ori import MahjongGBEnv
 from env.feature import FeatureAgent
 class Evaluator:
@@ -13,7 +13,10 @@ class Evaluator:
 
         self.config = config
         # 加载当前模型
-        self.model = CNNModel().to(self.device)
+        if self.config['model'] == 'CNN':
+            self.model = CNNModel().to(self.device)
+        elif self.config['model'] == 'CNN2':
+            self.model = PreHandsModel().to(self.device)
         self.baseline_model = CNNModel().to(self.device)
 
         self.update_model(model_ckpt, baseline_ckpt)
@@ -43,6 +46,10 @@ class Evaluator:
                     action_dict = {}
                     for agent_name in obs:
                         state = obs[agent_name]
+                        state['oppo_hands'] = torch.tensor(state['observation'][0:12], dtype = torch.float)
+                        now_player = int(agent_name[-1])
+                        for i in range(3):
+                            state['oppo_hands'][4*i:4*(i+1)] = torch.tensor(self.env.agents[(now_player+i)%4]._obs()['observation'][2:6], dtype = torch.float)
                         if agent_name == seat_name:
                             # use model to predict action
                             with torch.no_grad():
@@ -65,7 +72,6 @@ class Evaluator:
                 for i in range(4):
                     if i != seat:
                         baseline_scores.append(reward[f'player_{i+1}'])
-        print(model_scores)
         avg_model = np.mean(model_scores)
         avg_baseline = np.mean(baseline_scores)
         
@@ -79,5 +85,6 @@ class Evaluator:
         def act(self, obs):
             obs_tensor = torch.tensor(obs['observation']).unsqueeze(0).to(self.device)
             mask_tensor = torch.tensor(obs['action_mask']).unsqueeze(0).to(self.device)
+            oppo_hands = obs['oppo_hands'].detach().clone().unsqueeze(0).to(self.device)
 
-            return self.model({'observation': obs_tensor, 'action_mask': mask_tensor})[:2]
+            return self.model({'observation': obs_tensor, 'action_mask': mask_tensor, 'oppo_hands': oppo_hands})[:2]

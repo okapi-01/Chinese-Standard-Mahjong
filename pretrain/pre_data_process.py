@@ -6,7 +6,8 @@ import numpy as np
 import json
 import argparse
 
-obs = [[] for i in range(4)]
+# obs = [[] for i in range(4)]
+obs = [{'self': [], 'oppo_hands': []} for _ in range(4)]
 actions = [[] for i in range(4)]
 matchid = -1
 
@@ -15,25 +16,33 @@ l = []
 def filterData():
     global obs
     global actions
-    newobs = [[] for i in range(4)]
+    # newobs = [[] for i in range(4)]
+    newobs = [{'self': [], 'oppo_hands': []} for _ in range(4)]
     newactions = [[] for i in range(4)]
     for i in range(4):
-        for j, o in enumerate(obs[i]):
-            if o['action_mask'].sum() > 1: # ignore states with single valid action (Pass)
-                newobs[i].append(o)
+        # for j, o in enumerate(obs[i]):
+        #     if o['action_mask'].sum() > 1: # ignore states with single valid action (Pass)
+        #         newobs[i].append(o)
+        #         newactions[i].append(actions[i][j])
+        for j, o in enumerate(obs[i]['self']):
+            if o['action_mask'].sum() > 1:  # 忽略只有一个有效动作的状态
+                newobs[i]['self'].append(o)
                 newactions[i].append(actions[i][j])
+                newobs[i]['oppo_hands'].append(obs[i]['oppo_hands'][j])
     obs = newobs
     actions = newactions
 
 def saveData(args):
-    assert [len(x) for x in obs] == [len(x) for x in actions], 'obs actions not matching!'
+    assert [len(x['self']) for x in obs] == [len(x) for x in actions], 'obs actions not matching!'
     l.append(sum([len(x) for x in obs]))
     np.savez(os.path.join(args.data, f'{matchid}.npz')
-        , obs = np.stack([x['observation'] for i in range(4) for x in obs[i]]).astype(np.int8)
-        , mask = np.stack([x['action_mask'] for i in range(4) for x in obs[i]]).astype(np.int8)
+        , obs = np.stack([x['observation'] for i in range(4) for x in obs[i]['self']]).astype(np.int8)
+        , mask = np.stack([x['action_mask'] for i in range(4) for x in obs[i]['self']]).astype(np.int8)
         , act = np.array([x for i in range(4) for x in actions[i]])
+        , oppo_hands = np.stack([x for i in range(4) for x in obs[i]['oppo_hands']]).astype(np.int8)
     )
-    for x in obs: x.clear()
+    for x in obs: x['self'].clear()
+    for x in obs: x['oppo_hands'].clear()
     for x in actions: x.clear()
 
 if __name__ == '__main__':
@@ -62,8 +71,9 @@ if __name__ == '__main__':
                 elif t[2] == 'Draw':
                     for i in range(4):
                         if i == p:
-                            obs[p].append(agents[p].request2obs(' '.join(t[2:])))
+                            obs[p]['self'].append(agents[p].request2obs(' '.join(t[2:])))
                             actions[p].append(0)
+                            obs[p]['oppo_hands'].append(np.vstack([agents[(p+k+1)%4]._obs()['observation'][2:6] for k in range(3)]))
                         else:
                             agents[i].request2obs(' '.join(t[:3]))
                 elif t[2] == 'Play':
@@ -73,16 +83,20 @@ if __name__ == '__main__':
                         if i == p:
                             agents[p].request2obs(line)
                         else:
-                            obs[i].append(agents[i].request2obs(line))
+                            obs[i]['self'].append(agents[i].request2obs(line))
                             actions[i].append(0)
+                            # 添加对手手牌信息
+                            # print(agents[i]._obs()['observation'][2:6].shape)
+                            obs[i]['oppo_hands'].append(np.vstack([agents[(i+k+1)%4]._obs()['observation'][2:6] for k in range(3)]))
                     curTile = t[3]
                 elif t[2] == 'Chi':
                     actions[p].pop()
                     actions[p].append(agents[p].response2action('Chi %s %s' % (curTile, t[3])))
                     for i in range(4):
                         if i == p:
-                            obs[p].append(agents[p].request2obs('Player %d Chi %s' % (p, t[3])))
+                            obs[p]['self'].append(agents[p].request2obs('Player %d Chi %s' % (p, t[3])))
                             actions[p].append(0)
+                            obs[p]['oppo_hands'].append(np.vstack([agents[(p+k+1)%4]._obs()['observation'][2:6] for k in range(3)]))
                         else:
                             agents[i].request2obs('Player %d Chi %s' % (p, t[3]))
                 elif t[2] == 'Peng':
@@ -90,8 +104,9 @@ if __name__ == '__main__':
                     actions[p].append(agents[p].response2action('Peng %s' % t[3]))
                     for i in range(4):
                         if i == p:
-                            obs[p].append(agents[p].request2obs('Player %d Peng %s' % (p, t[3])))
+                            obs[p]['self'].append(agents[p].request2obs('Player %d Peng %s' % (p, t[3])))
                             actions[p].append(0)
+                            obs[p]['oppo_hands'].append(np.vstack([agents[(p+k+1)%4]._obs()['observation'][2:6] for k in range(3)]))
                         else:
                             agents[i].request2obs('Player %d Peng %s' % (p, t[3]))
                 elif t[2] == 'Gang':
@@ -114,8 +129,9 @@ if __name__ == '__main__':
                         if i == p:
                             agents[p].request2obs('Player %d BuGang %s' % (p, t[3]))
                         else:
-                            obs[i].append(agents[i].request2obs('Player %d BuGang %s' % (p, t[3])))
+                            obs[i]['self'].append(agents[i].request2obs('Player %d BuGang %s' % (p, t[3])))
                             actions[i].append(0)
+                            obs[i]['oppo_hands'].append(np.vstack([agents[(i+k+1)%4]._obs()['observation'][2:6] for k in range(3)]))
                 elif t[2] == 'Hu':
                     actions[p].pop()
                     actions[p].append(agents[p].response2action('Hu'))
@@ -140,7 +156,7 @@ if __name__ == '__main__':
             elif t[0] == 'Score':
                 filterData()
                 saveData(args)
-                if matchid > 60000:
+                if matchid > 98000:
                     break
             line = f.readline()
     with open(os.path.join(args.data, "count.json"), 'w') as f:

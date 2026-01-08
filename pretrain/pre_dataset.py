@@ -67,18 +67,20 @@ class MahjongGBDataset_Allload(Dataset):
         self.samples = sum(match_samples)
         self.augment = augment
 
-        obs_list, mask_list, act_list = [], [], []
+        obs_list, mask_list, act_list, oppo_list = [], [], [], []
         for i in range(self.matches):
             d = np.load(os.path.join(self.data_path, f'{i + self.begin}.npz'))
             obs_list.append(d['obs'])
             mask_list.append(d['mask'])
             act_list.append(d['act'])
+            oppo_list.append(d['oppo_hands'])
         self.obs = np.concatenate(obs_list, axis=0)
         self.mask = np.concatenate(mask_list, axis=0)
         self.act = np.concatenate(act_list, axis=0)
+        self.oppo_hands = np.concatenate(oppo_list, axis=0)
 
     def __len__(self):
         return len(self.obs)
 
     def __getitem__(self, index):
-        return self.obs[index], self.mask[index], self.act[index]
+        return self.obs[index], self.mask[index], self.act[index], self.oppo_hands[index]

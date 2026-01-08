@@ -9,7 +9,7 @@ from scripts.replay_buffer import ReplayBuffer
 from scripts.model_pool import ModelPoolClient
 from env.env import MahjongGBEnv
 from env.feature import FeatureAgent
-from model import CNNModel
+from model import *
 
 class Actor(Process):
 
@@ -24,16 +24,19 @@ class Actor(Process):
     
         self.pretrained_model = CNNModel() # pretrained model
         if self.config['baseline_ckpt']:
-                self.pretrained_model.load_state_dict(torch.load(self.config['baseline_ckpt'], map_location=torch.device('cpu')))
+            self.pretrained_model.load_state_dict(torch.load(self.config['baseline_ckpt'], map_location=torch.device('cpu')))
         else:
-                raise FileNotFoundError("No pre-trained model found in the specified path.")
+            raise FileNotFoundError("No pre-trained model found in the specified path.")
     
         # connect to model pool
         model_pool = ModelPoolClient(self.config['model_pool_name'])
         
         # print("actor running")
         # create network model
-        model = CNNModel()
+        if self.config['model'] == 'CNN':
+            model = CNNModel()
+        elif self.config['model'] == 'CNN2':
+            model = PreHandsModel()
         
         # load initial model
         version = model_pool.get_latest_model()
@@ -73,7 +76,8 @@ class Actor(Process):
             episode_data = {
                 'state' : {
                     'observation': [],
-                    'action_mask': []
+                    'action_mask': [],
+                    'oppo_hands': [],
                 },
                 'action' : [],
                 'reward' : [],
@@ -87,13 +91,20 @@ class Actor(Process):
                 # each player take action
                 actions = {}
                 values = {}
+                place = 0
                 for agent_name in obs:
+                    place += 1
                     # agent_data = episode_data[agent_name]
                     state = obs[agent_name]
                     
+                    state['oppo_hands'] = torch.tensor(state['observation'][0:12], dtype = torch.float)
+                    now_player = int(agent_name[-1])
+                    for i in range(3):
+                        state['oppo_hands'][4*i:4*(i+1)] = torch.tensor(env.agents[(now_player+i)%4]._obs()['observation'][2:6], dtype = torch.float)
                     if agent_name == train_agent_name:
                         episode_data['state']['observation'].append(state['observation'])
                         episode_data['state']['action_mask'].append(state['action_mask'])
+                        episode_data['state']['oppo_hands'].append(state['oppo_hands'])
                     state['observation'] = torch.tensor(state['observation'], dtype = torch.float).unsqueeze(0)
                     state['action_mask'] = torch.tensor(state['action_mask'], dtype = torch.float).unsqueeze(0)
                     # model.train(False) # Batch Norm inference mode
@@ -136,6 +147,7 @@ class Actor(Process):
                 episode_data['reward'].pop(0)
             obs = np.stack(episode_data['state']['observation'])
             mask = np.stack(episode_data['state']['action_mask'])
+            oppo_hands = np.stack(episode_data['state']['oppo_hands'])
             actions = np.array(episode_data['action'], dtype = np.int64)
             rewards = np.array(episode_data['reward'], dtype = np.float32)
             values = np.array(episode_data['value'], dtype = np.float32)
@@ -155,7 +167,8 @@ class Actor(Process):
                 self.replay_buffer.push_win({
                     'state': {
                         'observation': obs,
-                        'action_mask': mask
+                        'action_mask': mask,
+                        'oppo_hands': oppo_hands,
                     },
                     'action': actions,
                     'adv': advantages,
@@ -165,7 +178,8 @@ class Actor(Process):
                 self.replay_buffer.push_lose({
                     'state': {
                         'observation': obs,
-                        'action_mask': mask
+                        'action_mask': mask,
+                        'oppo_hands': oppo_hands,
                     },
                     'action': actions,
                     'adv': advantages,
