@@ -61,6 +61,7 @@ class FeatureAgent(MahjongGBAgent):
         self.isAboutKong = False
         self.obs = np.zeros((self.OBS_SIZE, 36))
         self.obs[self.OFFSET_OBS['SEAT_WIND']][self.OFFSET_TILE['F%d' % (self.seatWind + 1)]] = 1
+        self.valid = []
     
     '''
     Wind 0..3
@@ -340,7 +341,7 @@ class FeatureAgent(MahjongGBAgent):
             mask[a] = 1
         return {
             'observation': self.obs.reshape((self.OBS_SIZE, 4, 9)).copy(),
-            'action_mask': mask
+            'action_mask': mask,
         }
     
     def _hand_embedding_update(self):

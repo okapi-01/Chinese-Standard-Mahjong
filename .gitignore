@@ -1,5 +1,9 @@
 **/__pycache__/
 **/data/
 **/models/
+<<<<<<< HEAD
 **/ckpt/
 **/data.zip
+=======
+**/ckpt
+>>>>>>> d9d6000579cd65624e1177dbf46c18129b045278

@@ -2,8 +2,7 @@
 from env.feature import FeatureAgent
 
 # Model part
-from scripts.model import CNNModel
-from scripts.model import TransformerMultiHeadModel
+from scripts.model import *
 
 # Botzone interaction
 import numpy as np

@@ -144,7 +144,7 @@ class MahjongGBEnv():
             self.reward[player] = -30
             self.done = True
 
-        TING_REWARD = 2
+        TING_REWARD = 10
         if not self.done:
             testPlayer = (self.curPlayer + 3) % 4
             cur_ting = self._is_ting(testPlayer)

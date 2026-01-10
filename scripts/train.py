@@ -11,11 +11,11 @@ from torch.utils.tensorboard import SummaryWriter
 
 if __name__ == '__main__':
     config = {
-        'replay_buffer_size': 25000, #50000
-        'replay_buffer_episode': 300,
-        'model_pool_size': 10, #20
-        'model_pool_name': 'model-pool-transformer2',
-        'num_actors': 48, #16
+        'replay_buffer_size': 100000,
+        'replay_buffer_episode': 400,
+        'model_pool_size': 20,
+        'model_pool_name': 'model_pool',
+        'num_actors': 32,
         'episodes_per_actor': 100000,
         'gamma': 0.99,
         'lambda': 0.95,
@@ -23,19 +23,20 @@ if __name__ == '__main__':
         'batch_size': 2048, #256,
         'epochs': 3,
         'clip': 0.2,
-        'lr': 1e-6,
+        'lr': 0, #1e-6,
         'policy_coeff': 1.0,
         'value_coeff': 0.0001, #0.1
         'entropy_coeff': 0.003, #0.02,
         'kl_coeff': 0.0,
         'device': 'cuda',
-        'ckpt_save_interval': 500,  # iter
+        'ckpt_save_interval': 1,  # iter
         'ckpt_save_path': './models/',
-        'pretrain_ckpt_path': './models/20260103-094027/72000.pt', #'ckpt/20251218-144714',
+        'pretrain_ckpt_path': './models/20260103-094027/72000.pt', #'./models/20260103-094027/72000.pt', #'ckpt/20251218-144714',
         #evaluate
-        'eval_episodes': 100,
-        'eval_interval': 500,  # iter
-        'baseline_ckpt': 'ckpt/20251218-144714/20.pt',
+        'eval_episodes': 1000,
+        'eval_interval': 1,  # iter
+        'baseline_ckpt': 'ckpt/20251213-160350/100.pkl',
+        'model': 'Transformer', #Transformer, CNN, CNN2
     }
     
     timestamp = time.strftime("%Y%m%d-%H%M%S")
