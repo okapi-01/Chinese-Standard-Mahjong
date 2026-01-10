@@ -31,7 +31,7 @@ if __name__ == '__main__':
         'device': 'cuda',
         'ckpt_save_interval': 500,  # iter
         'ckpt_save_path': './models/',
-        'pretrain_ckpt_path': 'ckpt/20251218-144714',
+        'pretrain_ckpt_path': './models/20260103-094027/72000.pt', #'ckpt/20251218-144714',
         #evaluate
         'eval_episodes': 100,
         'eval_interval': 500,  # iter

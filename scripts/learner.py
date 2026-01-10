@@ -38,15 +38,31 @@ class Learner(Process):
         #model = CNNModel()
         model = TransformerMultiHeadModel(dropout=0)
         if self.config['pretrain_ckpt_path']:
-            model_files = [f for f in os.listdir(self.config['pretrain_ckpt_path']) if f.endswith('.pt')]
-            if model_files:
-                max_epoch = max([int(f.split('.')[0]) for f in model_files if f.split('.')[0].isdigit()])
-                model_path = os.path.join(self.config['pretrain_ckpt_path'], f"{max_epoch}.pt")
+            # 情况1: 传入的是具体文件
+            if os.path.isfile(self.config['pretrain_ckpt_path']):
+                model_path = self.config['pretrain_ckpt_path']
                 model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
-                iterations = max_epoch + 1
                 print(f"Loaded pre-trained model from {model_path}")
+                
+                # 尝试从文件名恢复 iterations (例如 72000.pt -> 72000)
+                try:
+                    filename = os.path.basename(model_path)
+                    max_epoch = int(filename.split('.')[0])
+                    iterations = max_epoch + 1
+                except ValueError:
+                    pass # 如果文件名不是数字，就不更新 iterations
+
+            # 情况2: 传入的是目录 (原有逻辑)
             else:
-                raise FileNotFoundError("No pre-trained model found in the specified path.")
+                model_files = [f for f in os.listdir(self.config['pretrain_ckpt_path']) if f.endswith('.pt')]
+                if model_files:
+                    max_epoch = max([int(f.split('.')[0]) for f in model_files if f.split('.')[0].isdigit()])
+                    model_path = os.path.join(self.config['pretrain_ckpt_path'], f"{max_epoch}.pt")
+                    model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+                    iterations = max_epoch + 1
+                    print(f"Loaded pre-trained model from {model_path}")
+                else:
+                    raise FileNotFoundError("No pre-trained model found in the specified path.")
         # send to model pool
         model_pool.push(model.state_dict()) # push cpu-only tensor to model_pool
         model = model.to(device)
